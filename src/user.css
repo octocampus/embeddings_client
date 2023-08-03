@@ -1,0 +1,25 @@
+.sidemenu{
+    width:320px;
+    padding: 10px;
+    background-color: #202123;
+  }
+  .chatbox {
+    flex:1;
+    background-color: white;
+    position: relative;
+    color:black;
+  }
+  
+ 
+  
+  
+
+  .User {
+    text-align: center;
+    display: flex;
+    background-color: #282c34;
+    color: white;
+    position: absolute;
+    top:0;bottom:0;right:0;left:0;
+  }
+ 
