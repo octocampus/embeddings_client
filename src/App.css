@@ -7,6 +7,34 @@
   top:0;bottom:0;right:0;left:0;
 }
 
+/* user.css */
+.sidemenu {
+  padding: 10px;
+  background-color: #202123;
+}
+
+
+@media (max-width: 640px) {
+  .sidemenu {
+    display: none;
+  }
+}
+
+
+@media (min-width: 640px) {
+  .sidemenu {
+    width: 350px; /* Adjust the width as per your preference */
+  }
+}
+
+  .chatbox {
+    flex:1;
+    position: relative;
+    color:black;
+  }
+  
+ 
+
 html {
   -webkit-box-sizing: border-box;
      -moz-box-sizing: border-box;

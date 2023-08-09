@@ -1,38 +1,170 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
 import './admin.css';
-import { IconSend} from '@tabler/icons-react';
 import {
-  IconArrowBarLeft,
   IconPlus,
 } from '@tabler/icons-react';
+import Model from './model';
+import FileItem from './fileItem';
+import FileItemSide from './fileItemSide'
+import axios from 'axios'
+import SideBar from './sideBar';
+
+
 export default function Admin() {
+
+  const history = useHistory();
+
+  const navigateToChatPage = () => {
+    history.push('/chat');
+  };
+
+
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+  });
+  const [isFormSubmitted, setIsFormSubmitted] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [chats, setChats] = useState([]);
+  const [error, setError] = useState('');
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+
+    if (formData.name && formData.description && files.length > 0) {
+      const newChat = {
+        name: formData.name,
+        description: formData.description,
+        pdfs: [...files],
+      };
+
+      // Check if a chat with the same name and description already exists
+      const chatExists = chats.some(
+        (chat) =>
+          chat.name === newChat.name && chat.description === newChat.description
+      );
+
+      if (chatExists) {
+        setError(`Chat with the name "${newChat.name}" and description "${newChat.description}" already exists.`);
+      } else {
+        setChats((prevChats) => [...prevChats, newChat]);
+        toggleModel();
+        setFormData({ name: '', description: '' });
+        setFiles([]);
+        setError(''); // Clear the error message
+      }
+    }
+    
+  };
+  
+  const handleCancel = () => {
+    toggleModel();
+    setFormData({ name: '', description: '' });
+    setFiles([]); 
+  };
+  
+  
+
+
+
+
+  const [files, setFiles] = useState([])
+  
+
+  const removeFile = (filename) => {
+    setFiles(files.filter(file => file.name !== filename))
+  }
+  const uploadHandler = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+  
+    file.isUploading = true;
+    setFiles([...files, file]);
+  
+    const formData = new FormData();
+    formData.append("newFile", file, file.name);
+  
+    axios.post('http://localhost:8080/upload', formData)
+      .then((res) => {
+        file.isUploading = false;
+        setFiles([...files, file]);
+      })
+      .catch((err) => {
+        console.error(err);
+        removeFile(file.name);
+      });
+  };
+  
+  
+
+const deleteFileHandler = (_name, chatIndex) => {
+  axios.delete(`http://localhost:8080/upload?name=${_name}`)
+    .then((res) => {
+      removeFile(_name);
+
+      setChats(prevChats => {
+        const updatedChats = [...prevChats];
+        const updatedChatFiles = updatedChats[chatIndex].pdfs.filter(pdf => pdf.name !== _name);
+        updatedChats[chatIndex].pdfs = updatedChatFiles;
+        return updatedChats;
+      });
+    })
+    .catch((err) => console.error(err));
+}
+
+
+const deleteMainSectionFileHandler = (_name) => {
+  axios.delete(`http://localhost:8080/upload?name=${_name}`)
+    .then((res) => {
+      removeFile(_name);
+    })
+    .catch((err) => console.error(err));
+}
+
+
   const [showContent, setShowContent] = useState(false);
 
   const handleMainButtonClick = () => {
     setShowContent(!showContent);
   };
   const handleDisconnectClick = () => {
-    // Perform your disconnect action here
+    
     console.log('Disconnected');
-    // You can implement your desired behavior, like logging out or ending a session
+    
   };
+
+  const [model, setModel] = useState(false);
+  const modalRef = useRef(null);
+
+  const toggleModel = () => {
+    setModel(!model);
+  };
+
+const handleClickOutside = (event) => {
+  if (modalRef.current && !modalRef.current.contains(event.target)) {
+    toggleModel();
+  }
+};
+
 
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showMenuBar, setShowMenuBar] = useState(false); // New state for the menu bar
+  const [showMenuBar, setShowMenuBar] = useState(false); 
 
-  // Function to toggle the visibility of the sidebar and menu bar
+ 
   const toggleSidebar = () => {
     setShowSidebar((prevShowSidebar) => !prevShowSidebar);
-    setShowMenuBar(false); // Hide the menu bar when the sidebar is toggled
+    setShowMenuBar(false); 
   };
 
-  // Function to toggle the visibility of the menu bar
+  
   const toggleMenuBar = () => {
     setShowMenuBar((prevShowMenuBar) => !prevShowMenuBar);
-    setShowSidebar(true); // Hide the sidebar when the menu bar is toggled
+    setShowSidebar(true); 
   };
 
-  // Function to reset the visibility of both sidebar and menu bar
+ 
   const resetVisibility = () => {
     setShowMenuBar(false);
     setShowSidebar(true);
@@ -44,10 +176,13 @@ export default function Admin() {
     
   
   return (
-    <div className='admin'>
-
-
-<aside className={`sidemenu flex flex-col fixed top-0 bottom-0 z-50 flex h-full w-[260px] flex-none flex-col space-y-5 bg-[#202123] p-2 transition-all sm:relative sm:top-0 ${showSidebar ? "" : "hidden"  }`}>
+    <div className='admin flex flex-col md:flex-row'>
+      
+      <aside
+        className={`sidemenu flex flex-col fixed top-0 bottom-0 z-50 flex h-full w-[260px] flex-none flex-col space-y-5 bg-[#202123] p-2 transition-all sm:relative sm:top-0 ${
+          showSidebar ? '' : 'hidden'
+        }`}
+      >
    
    <div class="flex items-center justify-evenly">
    <header className="flex items-center mb-50">
@@ -83,71 +218,42 @@ export default function Admin() {
            <line x1="9" y1="4" x2="9" y2="20" />
          </svg>
        )}
-       {!showSidebar && (
-         <button onClick={resetVisibility} className="text-white">Show Sidebar</button>
-       )}
+       
    </div>
- 
-   <a
+  
+   
+{chats.map((chat, index) => (
+  chat.pdfs.length > 0 && (
+    <a
+    
+      key={index}
       href="#"
-      className="block max-w-sm p-2 mb-5 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+      className="block max-w-sm p-2 mb-5 flex flex-col align-center bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
     >
-      <div>
-        {/* You can add content inside the div if needed */}
-      </div>
-
-      <h5 className="mb-2 text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
-        Embeddings: technology acquisitions 2021
+      <h5 className="mb-2 text-xl font-semibold tracking-tight text-gray-200 dark:text-white">
+        {chat.name}
       </h5>
-      <p className="font-normal text-sm h-16 overflow-hidden text-gray-700 dark:text-gray-400">
-        Unleashing the power of representation learning in the digital realm.
+      <p className="font-normal text-sm h-auto overflow-hidden text-left text-gray-700 px-2 dark:text-gray-400">
+        {chat.description}
       </p>
-
-      <div className="flex items-center justify-center m-4">
-        <div className="flex items-center space-x-12">
-          <div className="flex items-center space-x-3">
-            <svg
-              className="h-8 w-8 text-gray-500" 
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-              <polyline points="13 2 13 9 20 9" />
-            </svg>
-            <p className="text-gray-600 text-sm w-full">article project Key Methods Used in Qualitative Document Analysis.pdf</p>
-          </div>
-
-          <svg
-            className="h-6 w-6 text-white" 
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        </div>
-      </div>
+      <ul>
+        {chat.pdfs.map((pdf, pdfIndex) => (
+          <FileItemSide
+            key={pdfIndex}
+            file={pdf}
+            deleteFile={() => deleteFileHandler(pdf.name, index)}
+          />
+        ))}
+      </ul>
     </a>
-   <a
-     href="#"
-     class="block max-w-sm p-2 mb-5 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
-   >
-     <h5 class="mb-2 text-xl font-semibold tracking-tight text-gray-900 dark:text-white">Python</h5>
-     <p class="font-normal text-sm h-16 overflow-hidden text-gray-700 dark:text-gray-400">
-       Empowering developers with simplicity, versatility, and endless possibilities.
-     </p>
-   </a>
+  )
+))}
+
+
+
+  
    <div className="flex-grow flex items-end justify-center">
-   {/* Container to display content above the button */}
+
    <div className="flex flex-col">
    {showContent && (
      <div className="absolute z-10 -mt-8 w-[250px]">
@@ -161,6 +267,7 @@ export default function Admin() {
    )}
    <button
      onClick={handleMainButtonClick}
+     
      className="bg-blue-500 hover:bg-blue-700 mt-4 text-white font-bold py-2 px-4 border border-blue-700 rounded-lg text-base relative w-[250px]"
    >
      Mohamed el hajjami
@@ -175,26 +282,41 @@ export default function Admin() {
 
 <section className='overflow-none relative flex-1 bg-white dark:bg-[#343541]'>
 
- 
+<svg
+          onClick={toggleMenuBar}
+          className={`h-8 w-8 text-white m-5 ${showSidebar ? 'hidden' : ''}`}
+          viewBox='0 0 24 24'
+          strokeWidth='2'
+          stroke='currentColor'
+          fill='none'
+          strokeLinecap='round'
+          strokeLinejoin='round'
+        >
+          <path stroke='none' d='M0 0h24v24H0z' />
+          <rect x='4' y='4' width='16' height='16' rx='2' />
+          <line x1='9' y1='4' x2='9' y2='20' />
+        </svg>
 <div className='mx-auto flex w-[350px] flex-col space-y-10 pt-12 sm:w-[600px]'>
+
     <div className='flex h-full flex-col space-y-4 rounded border border-neutral-200 p-4 dark:border-neutral-600'>
     <div className="flex items-center justify-center w-full">
-            <label htmlFor="dropzone-file"
-                   className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+            <label 
+              
+              onChange={uploadHandler}
+              htmlFor="dropzone-file"
+              className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg aria-hidden="true" className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor"
-                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
+                <svg class="w-10 h-10 mb-3 text-gray-400"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round">  <polyline points="16 16 12 12 8 16" />  <line x1="12" y1="12" x2="12" y2="21" />  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />  <polyline points="16 16 12 12 8 16" /></svg>
                     <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">{'Click to upload'}</span> {'or drag and drop.'}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{'File supported types: TXT, PDF, XLSX, DOCX, Zip...'}</p>
                 </div>
-                <input id="dropzone-file" type="file" className="hidden" onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                        handleFile(e.target.files[0]).then(r => console.log("upload file success and save embedding success"));
-                    }
-                }}/>
+                <input id="dropzone-file" type="file" className="hidden" multiple onChange={(e) => {
+   if (e.target.files && e.target.files.length > 0) {
+      Array.from(e.target.files).forEach(file => {
+         handleFile(file).then(r => console.log("Upload file success and save embedding success"));
+      });
+   }
+}}/>
             </label>
         </div>
 
@@ -202,78 +324,74 @@ export default function Admin() {
 
 </div>
 
-<div className='flex items-center justify-center w-full m-4'>
-  <div className='flex items-center space-x-12'>
-    <div className='flex items-center  space-x-3'>
-    <svg class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-      <polyline points="13 2 13 9 20 9" />
-    </svg>
-    <h2 className='text-gray-400'>article project Key Methods Used in Qualitative Document Analysis.pdf</h2>
-    </div>
-    
-    <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
-  </div>
-</div>
-<div className='flex items-center justify-center w-full m-4'>
-  <div className='flex items-center space-x-12'>
-    <div className='flex items-center  space-x-3'>
-    <svg class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-      <polyline points="13 2 13 9 20 9" />
-    </svg>
-    <h2 className='text-gray-400'>article project Key Methods Used in Qualitative Document Analysis.pdf</h2>
-    </div>
-    
-    <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
-  </div>
-</div>
-<button className='bg-blue-600 hover:bg-blue-700 mt-4 text-white font-bold py-2 px-4 border border-blue-700 rounded-lg text-base'>
-  New chat
-</button>
-
-
-{/* <div
-        className="stretch mx-2 mt-4 flex flex-row gap-3 last:mb-2 md:mx-4 md:mt-[52px] md:last:mb-6 lg:mx-auto lg:max-w-3xl">
-        
-          
-        
-
-     
-         
-        
-
-        <div
-          className="relative flex w-full flex-grow flex-col rounded-md border border-black/10 bg-white py-2 shadow-[0_0_10px_rgba(0,0,0,0.10)] dark:border-gray-900/50 dark:bg-[#40414F] dark:text-white dark:shadow-[0_0_15px_rgba(0,0,0,0.10)] md:py-3 md:pl-4">
-          <textarea
-            
-            className="m-0 w-full resize-none border-0 bg-transparent p-0 pr-7 pl-2 text-black outline-none focus:ring-0 focus-visible:ring-0 dark:bg-transparent dark:text-white md:pl-0"
-            style={{
-              resize: 'none',
-              bottom: `400px`,
-              maxHeight: '400px',
-              
-            }}
-            placeholder={'Type a message...' || ''}
-            
-            rows={1}
-            
+<ul>
+          {files.map(f => (
+            <FileItem
+            key={f.name}
+            file={f}
+            deleteFile={() => deleteMainSectionFileHandler(f.name)}
           />
-
+          
+          ))}
+        </ul>
+        {files.length > 0 && (
           <button
-            className="absolute right-3 rounded-sm p-1 text-neutral-800 hover:bg-neutral-200 hover:text-neutral-900 focus:outline-none dark:bg-opacity-50 dark:text-neutral-100 dark:hover:text-neutral-200"
-         
+            className='bg-blue-600 hover:bg-blue-700 mt-4 text-white font-bold py-2 px-4 border border-blue-700 rounded-lg text-base'
+            onClick={(e) => {
+              handleFormSubmit(e); 
+              toggleModel();
+            }}
           >
-            <IconSend size={16} className="opacity-60"/>
+            New chat
           </button>
-        </div>
-      </div> */}
+        )}
+
+
+
 </section>
+{model && (
+        <div
+          className='fixed top-0 left-0 right-0 bottom-0 w-screen h-screen'
+          onClick={handleClickOutside}
+        >
+          <div
+            ref={modalRef}
+            className='absolute top-80 left-1/2 transform -translate-x-1/2 -translate-y-1/2 leading-5 bg-gray-200 px-7 py-7 rounded-md w-96 '
+          >
+            <form onSubmit={handleFormSubmit}>
+ <div class="mb-6">
+        <label for="base-input" class="block mb-2 text- font-bold  text-gray-900 ">Name</label>
+        <input type="text" id="base-input" placeholder="Enter name" value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5    "/>
+        </div>  
+        <div class="mb-6">
+         <label for="large-input" class="block mb-2 text-sm  font-bold  text-gray-900 text-center align-top">description</label>
+         
+    <input type="text" id="large-input" placeholder="description..." rows="4" value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="block w-full h-24 p-2.5 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-md focus:ring-blue-500  placeholder-top placeholder-left focus:border-blue-500     "/>      
+      </div>
+      <div className="flex space-x-8 justify-center">
+    <button
+      type="submit"
+      onClick={handleFormSubmit}
+      className="px-4 py-2 text-sm text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
+    >
+      Confirm
+    </button>
+    <button
+      type="button"
+      onClick={handleCancel}
+      className="px-4 py-2 text-sm text-gray-900 bg-gray-300 rounded hover:bg-gray-400 focus:outline-none focus:bg-gray-300"
+    >
+      Cancel
+    </button>
+  </div>
+  {error && <p className="text-red-500 mt-2">{error}</p>}
+            </form>
        
+          </div>
+        </div>
+      )}
     
     
     </div>
