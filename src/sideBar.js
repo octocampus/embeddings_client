@@ -4,9 +4,12 @@ import {
   } from '@tabler/icons-react';
   import FileItemSide from './fileItemSide'
   import axios from 'axios'
+  import { Link } from 'react-router-dom/cjs/react-router-dom.min';
+import ChatList from './chatList';
 
-const SideBar = ({ showSidebar,toggleSidebar, removeFile  }) => {
-    const [showContent, setShowContent] = useState(false);
+const SideBar = ({ showSidebar,toggleSidebar, deleteFileHandler, chats  }) => {
+    
+  const [showContent, setShowContent] = useState(false);
     const handleMainButtonClick = () => {
         setShowContent(!showContent);
       };
@@ -16,23 +19,8 @@ const SideBar = ({ showSidebar,toggleSidebar, removeFile  }) => {
         
       };
 
-
-    const [chats, setChats] = useState([]);
-    
-    const deleteFileHandler = (_name, chatIndex) => {
-        axios.delete(`http://localhost:8080/upload?name=${_name}`)
-          .then((res) => {
-            removeFile(_name);
       
-            setChats(prevChats => {
-              const updatedChats = [...prevChats];
-              const updatedChatFiles = updatedChats[chatIndex].pdfs.filter(pdf => pdf.name !== _name);
-              updatedChats[chatIndex].pdfs = updatedChatFiles;
-              return updatedChats;
-            });
-          })
-          .catch((err) => console.error(err));
-      }
+   
     return (
         <aside
         className={`sidemenu flex flex-col fixed top-0 bottom-0 z-50 flex h-full w-[260px] flex-none flex-col space-y-5 bg-[#202123] p-2 transition-all sm:relative sm:top-0 ${
@@ -78,33 +66,10 @@ const SideBar = ({ showSidebar,toggleSidebar, removeFile  }) => {
    </div>
   
    
-{chats.map((chat, index) => (
-  chat.pdfs.length > 0 && (
-    <a
-    
-      key={index}
-      href="#"
-      className="block max-w-sm p-2 mb-5 flex flex-col align-center bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
-    >
-      <h5 className="mb-2 text-xl font-semibold tracking-tight text-gray-200 dark:text-white">
-        {chat.name}
-      </h5>
-      <p className="font-normal text-sm h-auto overflow-hidden text-left text-gray-700 px-2 dark:text-gray-400">
-        {chat.description}
-      </p>
-      <ul>
-        {chat.pdfs.map((pdf, pdfIndex) => (
-          <FileItemSide
-            key={pdfIndex}
-            file={pdf}
-            deleteFile={() => deleteFileHandler(pdf.name, index)}
-          />
-        ))}
-      </ul>
-    </a>
-  )
-))}
-
+<ChatList
+ chats={chats}
+ deleteFileHandler={deleteFileHandler}
+/>
 
 
   
